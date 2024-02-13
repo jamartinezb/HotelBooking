@@ -11,7 +11,7 @@ Hotel Booking API es un sistema de gestión de reservas que permite a los usuari
 
 - Búsqueda de hoteles y habitaciones disponibles.
 - Reservas de habitaciones y gestión de estadías.
-- Envío de confirmaciones de reserva por correo electrónico.
+- Envío de confirmaciones de reserva por correo electrónico. (ver spam)
 - Gestión de habitaciones y hoteles.
 
 ## Tecnologías Utilizadas
