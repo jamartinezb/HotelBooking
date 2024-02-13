@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "UCgBNIX4ka+VBPgl+1W8x8LAJxhLGx3iAszqTeqO/wM=",
+  "Source": "HotelBookingApi",
+  "BasePath": "_content/HotelBookingApi",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
