@@ -295,6 +295,39 @@ namespace HotelBookingApi.Controllers
                 return BadRequest("Datos de la reserva inválidos.");
             }
 
+            // Validar si el hotel existe
+            var hotelExistente = await _dbContext.Hoteles.FindAsync(reservaDto.HotelId);
+            if (hotelExistente == null)
+            {
+                return NotFound($"El hotel con ID {reservaDto.HotelId} no existe.");
+            }
+
+            // Validar si la habitación existe y está disponible
+            var habitacionExistente = await _dbContext.Habitaciones.FindAsync(reservaDto.HabitacionId);
+            if (habitacionExistente == null || !habitacionExistente.Estado)
+            {
+                return NotFound($"La habitación con ID {reservaDto.HabitacionId} no existe o no está disponible.");
+            }
+
+            // Validar capacidad de la habitación
+            if (reservaDto.CantPersonas > habitacionExistente.Capacidad)
+            {
+                return BadRequest("La cantidad de personas excede la capacidad de la habitación.");
+            }
+            // Validar si hay solapamiento de fechas, teniendo en cuenta el día completo
+            bool solapamiento = await _dbContext.Reservaciones.AnyAsync(r =>
+                r.HabitacionId == reservaDto.HabitacionId &&
+                reservaDto.FechaEntrada <= r.FechaSalida &&
+                reservaDto.FechaSalida >= r.FechaEntrada); 
+
+
+
+            if (solapamiento)
+            {
+                return BadRequest("Ya existe una reserva para esta habitación en las fechas especificadas.");
+            }
+
+            // Crear la nueva reserva
             Reservacion nuevaReserva = new Reservacion
             {
                 NombreCompleto = reservaDto.NombreCompleto,
@@ -309,6 +342,7 @@ namespace HotelBookingApi.Controllers
                 FechaEntrada = reservaDto.FechaEntrada,
                 FechaSalida = reservaDto.FechaSalida,
                 CantPersonas = reservaDto.CantPersonas,
+                HotelId = reservaDto.HotelId, // Asignar HotelId
                 HabitacionId = reservaDto.HabitacionId
             };
 
@@ -331,20 +365,19 @@ namespace HotelBookingApi.Controllers
             }
         }
 
-
         //buscar hotel para reservar
         [HttpGet("buscar")]
         public async Task<ActionResult<List<HotelBusquedaDto>>> BuscarHoteles(DateTime fechaEntrada, DateTime fechaSalida, int cantidadPersonas, string ciudadDestino)
         {
             var hotelesDisponibles = await _dbContext.Hoteles
-                .Where(h => h.Ubicacion.ToLower() == ciudadDestino.ToLower() && h.Habitaciones.Any(hab => hab.Capacidad >= cantidadPersonas))
+                .Where(h => h.Ubicacion.ToLower() == ciudadDestino.ToLower() && h.Habitaciones.Any(hab => hab.Capacidad >= cantidadPersonas && hab.Estado))
                 .Include(h => h.Habitaciones)
                     .ThenInclude(hab => hab.Reservaciones)
                 .ToListAsync();
 
             var hotelesFiltradosDto = hotelesDisponibles
                 .Where(hotel => hotel.Habitaciones.Any(habitacion => habitacion.Capacidad >= cantidadPersonas &&
-                    !habitacion.Reservaciones.Any(reservacion =>
+                    habitacion.Estado && !habitacion.Reservaciones.Any(reservacion =>
                         fechaEntrada <= reservacion.FechaSalida && fechaSalida >= reservacion.FechaEntrada)))
                 .Select(hotel => new HotelBusquedaDto
                 {
@@ -353,7 +386,7 @@ namespace HotelBookingApi.Controllers
                     Ubicacion = hotel.Ubicacion,
                     HabitacionesDisponibles = hotel.Habitaciones
                         .Where(habitacion => habitacion.Capacidad >= cantidadPersonas &&
-                            !habitacion.Reservaciones.Any(reservacion =>
+                            habitacion.Estado && !habitacion.Reservaciones.Any(reservacion =>
                                 fechaEntrada <= reservacion.FechaSalida && fechaSalida >= reservacion.FechaEntrada))
                         .Select(habitacion => new HabitacionBusquedaDto
                         {
@@ -371,6 +404,7 @@ namespace HotelBookingApi.Controllers
 
             return hotelesFiltradosDto;
         }
+
 
 
     }
